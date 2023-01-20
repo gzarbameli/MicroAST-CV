@@ -1,0 +1,7 @@
+{
+  "name": "ASTApp",
+  "integrations": {
+    "capacitor": {}
+  },
+  "type": "react"
+}

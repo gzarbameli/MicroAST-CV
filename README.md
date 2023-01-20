@@ -38,7 +38,20 @@ Official Pytorch code for ["MicroAST: Towards Super-Fast Ultra-Resolution Arbitr
 - Run train script:
 
   `python train_microAST.py --content_dir ./coco2014/train2014 --style_dir ./wikiart/train`
-  
+
+**Mobile Application:**
+
+- The mobile application was created using the React Ionic framework. To run it:
+
+  ```Bash
+  cd application/
+  npm install
+  ionic serve
+  ```
+
+- To visualize it in a correct way from Google Chrome, type CTRL+Shift+C and, from the dev window, select the phone size mode from the icon in the left top corner.
+
+![set phone screen-size](/application/src/images/chrome/img.jpg)
   
  ## Citation:
 
