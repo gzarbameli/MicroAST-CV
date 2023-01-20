@@ -41,8 +41,13 @@ Official Pytorch code for ["MicroAST: Towards Super-Fast Ultra-Resolution Arbitr
 
 **Mobile Application:**
 
-- The mobile application was created using the React Ionic framework. To run it:
+- The mobile application was created using the React Ionic framework and a Flask-based backend. To run both the components, just open two shells and type:
 
+  Backend:
+  ```Bash
+  python backend_[cpu|gpu].py
+  ```
+  Frontend:
   ```Bash
   cd application/
   npm install
