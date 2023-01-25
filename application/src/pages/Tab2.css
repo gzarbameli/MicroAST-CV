@@ -1,0 +1,20 @@
+@import url('https://fonts.googleapis.com/css2?family=Roboto+Slab:wght@300&display=swap');
+
+h1.title {
+    color: rgb(0, 0, 0);
+    font-family: 'Roboto Slab', serif;
+    font-size: 180%;
+    text-align: center;
+    margin-top: 8px;
+    font-weight: bold;
+  }
+
+ion-card {
+    height: 200px;
+    width: 320px;
+    border-top: 2px solid black;
+    border-bottom: 2px solid black;
+    margin-left: auto;
+    margin-right: auto;
+    position: relative;
+}

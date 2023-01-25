@@ -1,27 +1,58 @@
 @import url('https://fonts.googleapis.com/css2?family=Roboto+Slab:wght@300&display=swap');
 
   
-  ion-title {
+  h1.title {
     color: rgb(0, 0, 0);
     font-family: 'Roboto Slab', serif;
-    font-size: 150%;
+    font-size: 180%;
     text-align: center;
     margin-top: 8px;
+    font-weight: bold;
   }
 
   ion-button {
-    width: 340px;
-    height: 35px;
-    margin-left: 5%;
+    width: 180px;
+    height: 48px;
+    margin: auto;
+    display: block;
+    padding-top: 7px;
+    --border-radius: 10px;
+    --border-color: #000;
+    --border-style: solid;
+    --border-width: 0.1px;
+  }
+
+  ion-icon {
+    font-size: 25px;
+  }
+
+  ion-button.transfer-button {
+    width: 300px;
+    height: 50px;
+    margin-top: 5%;
+    margin-left: auto;
+    margin-right: auto;
+    display: block;
+    padding-top: 4px;
+    font-size: 95%;
+    --border-radius: 10px;
+    --border-color: #000;
+    --border-style: solid;
+    --border-width: 0.1px;
   }
 
   h1.text {
     color: rgb(0, 0, 0);
     font-size: 130%;
     font-family: 'Roboto Slab', serif;
+    text-align: center;
+    margin-top: 0px;
   }
 
-  small {
-    margin-left: 5%;
-    text-decoration: underline;
+  ion-select {
+    margin: auto;
+    padding-top: 15px;
+    font-size: 110%;
+    font-family: 'Roboto Slab', serif;
   }
+  

@@ -1,0 +1,12 @@
+ion-tab-bar {
+    height: 55px;
+}
+
+ion-label {
+    font-size: 13px;
+    text-align: center;
+}
+
+ion-icon {
+    text-align: center;
+}

@@ -1,0 +1,48 @@
+@import url('https://fonts.googleapis.com/css2?family=Roboto+Slab:wght@300&display=swap');
+
+h1.title {
+    color: rgb(0, 0, 0);
+    font-family: 'Roboto Slab', serif;
+    font-size: 180%;
+    text-align: center;
+    margin-top: 8px;
+    font-weight: bold;
+  }
+
+p.about {
+    color: rgb(0, 0, 0);
+    font-family: 'Roboto Slab', serif;
+    width: 90%;
+    margin-left: 3%;
+    text-justify: inter-word;
+    text-align: justify;
+}
+
+h3.text {
+    color: rgb(0, 0, 0);
+    font-size: 120%;
+    font-family: 'Roboto Slab', serif;
+    text-align: left;
+    margin-left: 3%;
+  }
+
+h4.text {
+  color: rgb(0, 0, 0);
+  font-size: 130%;
+  font-weight: bold;
+  font-family: 'Roboto Slab', serif;
+  text-align: left;
+  margin-left: 3%;
+}
+
+ion-card.text-card {
+    height: 500px;
+    border-top: 0px solid black;
+    border-bottom: 0px solid black;
+}
+
+ion-card.credits-card {
+    height: 95px;
+    border-top: 0px solid black;
+    border-bottom: 0px solid black;
+}

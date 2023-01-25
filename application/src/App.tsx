@@ -62,7 +62,7 @@ const App: React.FC = () => (
           </IonTabButton>
           <IonTabButton tab="Your stylized images" href="/tab2">
             <IonIcon icon={images} />
-            <IonLabel>Recent</IonLabel>
+            <IonLabel>Gallery</IonLabel>
           </IonTabButton>
           <IonTabButton tab="About the AST Project" href="/tab3">
             <IonIcon icon={informationCircleOutline} />

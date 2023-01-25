@@ -8,11 +8,13 @@ import {
     IonLabel,
     IonButton,
     IonIcon,
-    IonList, IonSelect, IonSelectOption, IonSpinner, IonLoading
+    IonList, IonSelect, IonSelectOption, IonAlert, IonLoading
   } from "@ionic/react";
-  import React, { useRef, useState } from "react";
+  import { download, imageOutline, brushOutline } from 'ionicons/icons';
+  import React, { useRef, useState, useContext } from "react";
   import "./Tab1.css";
   import placeholder from "../images/placeholder.jpg"
+  import Tab2 from "./Tab2";
 
   interface StyleValue {
     file: any;
@@ -23,30 +25,38 @@ import {
   }
   
   const openStyleFileDialog = () => {
+    (document as any).getElementById("style-file-upload").value = null;
     (document as any).getElementById("style-file-upload").click();
+    let select = (document as any).getElementById("my-select")
+    select.value = "";
  };
 
  const openContentFileDialog = () => {
+    (document as any).getElementById("content-file-upload").value = null;
     (document as any).getElementById("content-file-upload").click();
  };
 
-  const Tab1: React.FC = () => {
 
+  const Tab1: React.FC = () => {
+    
     const [finalImage, setFinalImage] = useState("");
     const [isFinalImage, setIsFinalImage] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
-    const [isStyleLoaded, setIsStyleLoaded] = useState(false);
-    const [isContentLoaded, setIsContentLoaded] = useState(false);
+    const [contentName, setContentName] = useState("");
+    const [styleName, setStyleName] = useState("");
+    const [predefinedStyle, setPredefinedStyle] = useState("");
+    const [showAlert, setShowAlert] = useState(false);
 
     function DownloadButton() {
         return (
           <a href={`data:image/jpeg;base64,${finalImage}`} download>
-            <IonButton color="primary" expand="block" style={{width: "280px", height:"30px", marginLeft: "4%"}}>
-            DOWNLOAD
+            <IonButton color="success" expand="block" style={{width: "80px", height:"43px", marginTop: '7%', margin: 'auto', display: 'block'}}>
+              <IonIcon icon={download} />
             </IonButton>
           </a>
         );
     }
+    
     
     // Single File Upload
     const styleValue = useRef<StyleValue>({
@@ -59,24 +69,33 @@ import {
       });
 
     // Single File Upload
-    const onStyleFileChange = (fileChangeEvent: any) => {
-      styleValue.current.file = fileChangeEvent.target.files[0];
-      setIsStyleLoaded(true);
+    const onStyleFileChange = async (fileChangeEvent: any) => {
+      styleValue.current.file = await fileChangeEvent.target.files[0];
+      setStyleName(styleValue.current.file.name)
+      setPredefinedStyle("")
     };
 
     const onContentFileChange = (fileChangeEvent: any) => {
         contentValue.current.file = fileChangeEvent.target.files[0];   
-        setIsContentLoaded(true);
+        setContentName(contentValue.current.file.name)
       };
+
+    const onPredefinedStyleChange = async (value: any) => {
+      setPredefinedStyle(await value)
+      styleValue.current.file = false
+      setStyleName(styleValue.current.file.name)
+    };
   
     const submitForm = async () => {
-      if (!styleValue.current.file) {
+      if (!styleValue.current.file && predefinedStyle=="") {
         console.log("Missing style...")
+        setShowAlert(true)
         return false;
       }
 
       if (!contentValue.current.file) {
         console.log("Missing content...")
+        setShowAlert(true)
         return false;
       }
       
@@ -84,7 +103,10 @@ import {
 
       let formData = new FormData();
 
-      formData.append("styleFile", styleValue.current.file, styleValue.current.file.name);
+      if (predefinedStyle=="") {
+        formData.append("styleFile", styleValue.current.file, styleValue.current.file.name);
+      }
+      
       formData.append("contentFile", contentValue.current.file, contentValue.current.file.name);
       
       try {
@@ -93,6 +115,7 @@ import {
         const response = await fetch(serverUrl, {
           method: "POST",
           body: formData,
+          headers: new Headers({"predefinedStyle":predefinedStyle})
         });
   
         if (!response.ok) {
@@ -110,16 +133,16 @@ import {
     };
   
     return (
-      <IonPage>
-        <IonHeader collapse="condense">
+      
+        <IonPage>   
+        <IonHeader>
           <IonToolbar>
-            <IonTitle size="large">Arbitrary Style Transfer</IonTitle>
+            <h1 className="title">Arbitrary Style Transfer</h1>
           </IonToolbar>
         </IonHeader>
         <IonContent fullscreen>
-
           <br></br>   
-          <IonItem>
+          <IonItem className="ion-text-center" lines="full">
             <IonLabel>
               <h1 className="text">Select your style image </h1>
               <p>Upload from your device or select a predefined style</p>
@@ -130,34 +153,32 @@ import {
             type="file"
             id="style-file-upload"
             style={{ display: "none" }}
-            onChange={(ev) => onStyleFileChange(ev)}/>
+            onInput={(ev) => onStyleFileChange(ev)}/>
           <IonButton color="primary" expand="block" onClick={openStyleFileDialog}>
-            UPLOAD
+            {!(styleName) ? (
+                <IonIcon icon={imageOutline} slot={"icon-only"} />
+              ) : (
+                styleValue.current.file.name
+            )}
           </IonButton>
-          
-          {isStyleLoaded &&
-            <IonLabel color='success'>
-              <small>Style Uploaded!</small>
-            </IonLabel>
-          }
-          
+                
           <IonList>
-            <IonItem text-center>
+            <IonItem lines="full">
               <IonSelect
+                  id="my-select"
                   placeholder="Predefined styles"
-                  //onIonChange={(e) => pushLog(`ionChange fired with value: ${e.detail.value}`)}
-                  //onIonCancel={() => pushLog('ionCancel fired')}
-                  //onIonDismiss={() => pushLog('ionDismiss fired')}
+                  value={predefinedStyle}
+                  onIonChange={(e) => onPredefinedStyleChange(e.detail.value)}
                 >
                   <IonSelectOption value="Picasso">Picasso</IonSelectOption>
                   <IonSelectOption value="Monet">Monet</IonSelectOption>
-                  <IonSelectOption value="Giotto">Giotto</IonSelectOption>
+                  <IonSelectOption value="Kandinskij">Kandinskij</IonSelectOption>
               </IonSelect>
             </IonItem>
           </IonList>
 
           <br></br>
-          <IonItem>
+          <IonItem lines="full">
             <IonLabel>
               <h1 className="text">Select your content image </h1>
             </IonLabel>
@@ -169,47 +190,53 @@ import {
             style={{ display: "none" }}
             onChange={(ev) => onContentFileChange(ev)}/>
           <IonButton color="primary" expand="block" onClick={openContentFileDialog}>
-            UPLOAD
+            {!(contentName) ? (
+                  <IonIcon icon={imageOutline} slot={"icon-only"} />
+                ) : (
+                  contentName
+              )}
           </IonButton>
 
-          {isContentLoaded &&
-            <IonLabel color='success'>
-              <small>Content Uploaded!</small>
-            </IonLabel>
-          }
-
-          <br></br>  
-          <br></br> 
-
-          <IonButton color="secondary" expand="block" onClick={submitForm}>TRANSFER!</IonButton>
-              <IonLoading
-                isOpen={isLoading}
-                message={"Stylizing..."}
-              />
           <br></br>
-          
+          <IonButton className="transfer-button" color="secondary" expand="block" onClick={submitForm}>
+            <IonIcon icon={brushOutline} slot={"icon-only"}/>
+          </IonButton>
+
+          <IonAlert
+            isOpen={showAlert}
+            onDidDismiss={() => setShowAlert(false)}
+            header="Wait..."
+            subHeader="Missing Style or Content!"
+            buttons={['OK']}
+          />
+            
+          <IonLoading
+            isOpen={isLoading}
+            message={"Stylizing..."}
+          />        
+          <br></br> 
+          <br></br> 
+          <br></br> 
           {!isFinalImage ? (
                 <div style={{
-                    position: 'absolute',
                     width: '320px',
-                    height: '240px',
-                    left: '47%',
-                    bottom:'120px',
-                    marginLeft: '-150px',
+                    height: '230px',
+                    marginLeft: 'auto',
+                    marginRight: 'auto',
+                    position: "relative",
                     border: '1px solid black',
-                    padding: '2px'
+                    padding: '2px',
                 }}>
                 <img src={placeholder} alt="Your image" 
                 style={{width: '100%', height: '100%', margin: 'auto'}}/>
                 </div>
             ) : (
                 <div style={{
-                    position: 'absolute',
-                    width: '320px',
-                    height: '240px',
-                    bottom:'120px',
-                    left: '47%',
-                    marginLeft: '-150px',
+                  width: '320px',
+                    height: '230px',
+                    marginLeft: 'auto',
+                    marginRight: 'auto',
+                    position: "relative",
                     border: '1px solid black',
                     padding: '2px'
                 }}>
@@ -218,7 +245,7 @@ import {
                 <DownloadButton />
                 </div>
             )}
-            
+
         </IonContent>
       </IonPage>
       
