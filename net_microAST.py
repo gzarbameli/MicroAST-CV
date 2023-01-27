@@ -18,6 +18,22 @@ class ConvLayer(nn.Module):
         x = self.conv_layer(x)
         return x
 
+class ConvTranposeLayer(nn.Module):
+    def __init__(self, in_channels, out_channels, kernel_size, stride, groups, padding=0, output_padding=0):
+        super(ConvTranposeLayer, self).__init__()
+        # Padding Layer
+        self.padding = padding
+        self.reflection_pad = nn.ReflectionPad2d(padding)
+
+        # Transpose Convolution Layer
+        self.transp_conv_layer = nn.ConvTranspose2d(in_channels, out_channels, kernel_size, stride, groups=groups, output_padding=output_padding)
+
+    def forward(self, x):
+        if(self.padding > 0):
+          x = self.reflection_pad(x)
+        x = self.transp_conv_layer(x)
+        return x
+
 class ResidualLayer(nn.Module):
     def __init__(self, channels=128, kernel_size=3, groupnum=1):
         super(ResidualLayer, self).__init__()
@@ -100,7 +116,84 @@ class Decoder(nn.Module):
         out = self.dec3(x4)
         return out
 
+class DecoderConvTranspose(nn.Module):
+    def __init__(self):
+        super(DecoderConvTranspose, self).__init__()
+        self.dec1 = ResidualLayer(int(64*slim_factor), kernel_size=3)
+        self.dec2 = ResidualLayer(int(64*slim_factor), kernel_size=3)
+        self.dec3 = nn.Sequential(
+            # Upsample
+            ConvTranposeLayer(int(64*slim_factor), int(16*slim_factor), kernel_size=4, stride=2, groups=int(16*slim_factor), padding=0, output_padding=0),
+            nn.ReLU(inplace=True),
+            nn.ConvTranspose2d(int(16*slim_factor), int(16*slim_factor), kernel_size=1, stride=1, groups=1, padding=0, output_padding=0),
+            nn.ReLU(inplace=True),
 
+            # Upsample
+            ConvTranposeLayer(int(16*slim_factor), int(16*slim_factor), kernel_size=4, stride=2, groups=int(16*slim_factor), padding=0, output_padding=0),
+            nn.ReLU(inplace=True),
+            nn.ConvTranspose2d(int(16*slim_factor), int(16*slim_factor), kernel_size=1, stride=1, groups=1, padding=0, output_padding=0),
+            nn.ReLU(inplace=True),
+
+            # Convolve
+            ConvLayer(int(16*slim_factor), 3, kernel_size=5, stride=1, groupnum=1),
+
+            # Final Convolution
+            ResidualLayer(int(16*slim_factor), kernel_size=9)
+            )
+        
+    def forward(self, x, s, w, b, alpha):
+        x1 = featMod(x[1], s[1])
+        x1 = alpha * x1 + (1-alpha) * x[1]
+
+        x2 = self.dec1(x1, w[1], b[1], filterMod=True)
+        
+        x3 = featMod(x2, s[0])
+        x3 = alpha * x3 + (1-alpha) * x2
+        
+        x4 = self.dec2(x3, w[0], b[0], filterMod=True)
+
+        out = self.dec3(x4)
+        return out
+
+class DecoderTuned(nn.Module):
+    def __init__(self):
+        super(DecoderTuned, self).__init__()
+        self.dec1 = ResidualLayer(int(64*slim_factor), kernel_size=3)
+        self.dec2 = ResidualLayer(int(64*slim_factor), kernel_size=3)
+        self.dec3 = nn.Sequential(
+            nn.Upsample(scale_factor=2, mode='bicubic'),
+            ConvLayer(int(64*slim_factor), int(32*slim_factor), kernel_size=3, stride=1, groupnum=int(32*slim_factor)),
+            nn.ReLU(inplace=True),
+            ConvLayer(int(32*slim_factor), int(32*slim_factor), kernel_size=1, stride=1, groupnum=1),
+            nn.ReLU(inplace=True),
+            nn.Upsample(scale_factor=2, mode='bicubic'),
+            ConvLayer(int(32*slim_factor), int(16*slim_factor), kernel_size=3, stride=1, groupnum=int(16*slim_factor)),
+            nn.ReLU(inplace=True),
+            ConvLayer(int(16*slim_factor), int(16*slim_factor), kernel_size=1, stride=1, groupnum=1),
+            nn.ReLU(inplace=True),
+
+            ConvLayer(int(16*slim_factor), int(16*slim_factor), kernel_size=7, stride=1, groupnum=int(16*slim_factor)),
+            nn.ReLU(inplace=True),
+            ConvLayer(int(16*slim_factor), 3, kernel_size=1, stride=1, groupnum=1),
+            nn.ReLU(inplace=True),
+
+            # Final Convolution
+            ConvLayer(3, 3, kernel_size=15, stride=1, groupnum=1),
+            )
+        
+    def forward(self, x, s, w, b, alpha):
+        x1 = featMod(x[1], s[1])
+        x1 = alpha * x1 + (1-alpha) * x[1]
+
+        x2 = self.dec1(x1, w[1], b[1], filterMod=True)
+        
+        x3 = featMod(x2, s[0])
+        x3 = alpha * x3 + (1-alpha) * x2
+        
+        x4 = self.dec2(x3, w[0], b[0], filterMod=True)
+
+        out = self.dec3(x4)
+        return out
 
 class Modulator(nn.Module):
     def __init__(self):
