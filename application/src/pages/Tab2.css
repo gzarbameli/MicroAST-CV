@@ -10,11 +10,22 @@ h1.title {
   }
 
 ion-card {
-    height: 200px;
+    height: 285px;
     width: 320px;
-    border-top: 2px solid black;
-    border-bottom: 2px solid black;
+    box-shadow: 0 10px 10px rgba(0,0,0,0.23);
     margin-left: auto;
     margin-right: auto;
     position: relative;
+}
+
+
+ion-card-title {
+  color: rgb(0, 0, 0);
+  font-family: 'Roboto Slab', serif;
+  font-size: 160%;
+}
+
+ion-card-subtitle {
+  color: rgb(0, 0, 0);
+  font-family: 'Roboto Slab', serif;
 }

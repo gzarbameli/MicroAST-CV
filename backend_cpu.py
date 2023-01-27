@@ -2,7 +2,7 @@ import os
 from flask import Flask, request, jsonify
 from werkzeug.utils import secure_filename
 from flask_cors import CORS
-from flask import send_file
+from flask import send_file, send_from_directory
 import base64
 import shutil
 
@@ -22,9 +22,6 @@ def allowed_file(filename):
 @app.route('/upload', methods=['POST'])
 def upload_file():
 
-    #if ('styleFile' not in request.files or request.headers.get("predefinedStyle") == "") or 'contentFile' not in request.files:
-    #    return 'Missing one or both files in the request', 400
-    
     if request.headers.get("predefinedStyle") == "":
         styleFile = request.files['styleFile']
         styleFile.save(os.path.join(app.config['UPLOAD_FOLDER'], "styleFile.jpg"))
@@ -54,6 +51,11 @@ def get_predefined_styles():
             encoded_string = base64.b64encode(image_file.read()).decode("utf-8")
             image_list.append(encoded_string)
     return jsonify(image_list)
+
+@app.route('/gallery/<path:filename>')
+def serve_images(filename):
+    return send_from_directory('gallery', filename)
+
 
 if __name__ == '__main__':
     app.run(debug=True)
