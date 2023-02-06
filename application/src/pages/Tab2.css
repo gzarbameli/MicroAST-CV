@@ -10,7 +10,7 @@ h1.title {
   }
 
 ion-card {
-    height: 285px;
+    height: 308px;
     width: 320px;
     box-shadow: 0 10px 10px rgba(0,0,0,0.23);
     margin-left: auto;
@@ -28,4 +28,28 @@ ion-card-title {
 ion-card-subtitle {
   color: rgb(0, 0, 0);
   font-family: 'Roboto Slab', serif;
+  margin-top: -6px;
+}
+
+ion-button.action1 {
+  width: 46px;
+  height: auto;
+  display: inline-block;
+  padding-top: 9px;
+  margin-left: 145px;
+  --border-radius: 0px;
+  --border-color: #000;
+  --border-style: solid;
+  --border-width: 0px;
+}
+
+ion-button.action2 {
+  width: 89px;
+  height: auto;
+  display: inline-block;
+  padding-top: 9px;
+  --border-radius: 0px;
+  --border-color: #000;
+  --border-style: solid;
+  --border-width: 0px;
 }

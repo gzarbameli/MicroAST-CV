@@ -56,6 +56,9 @@ def get_predefined_styles():
 def serve_images(filename):
     return send_from_directory('gallery', filename)
 
+@app.route('/predefined_styles/<path:filename>')
+def serve_styles(filename):
+    return send_from_directory('predefined_styles', filename)
 
 if __name__ == '__main__':
     app.run(debug=True)

@@ -1,53 +1,57 @@
-import { IonContent, IonHeader, IonPage, IonIcon, IonToolbar, IonItem, IonCard, IonLabel, IonCardContent, IonCardTitle, IonCardHeader, IonCardSubtitle } from '@ionic/react';
+import { IonContent, IonHeader, IonPage, IonIcon, IonToolbar, IonItem, IonCard, IonLabel, IonButton, IonCardTitle, IonCardHeader, IonCardSubtitle } from '@ionic/react';
 import ExploreContainer from '../components/ExploreContainer';
 import './Tab2.css';
 import React, { useRef, useState, useEffect, useCallback } from "react";
 import { Gallery, Item } from 'react-photoswipe-gallery'
 import Tab1 from './Tab1';
 import IonPhotoViewer from '@codesyntax/ionic-react-photo-viewer';
+import ImageViewer from 'react-simple-image-viewer';
 
 const Tab2: React.FC = () => {
 
-  //const [images, setImages] = useState<string[]>([]);
-//
-  //const fetchImages = async () => {
-  //    try {
-  //        const response = await fetch('http://127.0.0.1:5000/gallery');
-  //        const data = await response.json();
-  //        const modifiedImages = await data.map((img: string) => `data:image/jpeg;base64,${img}`);
-  //        setImages(modifiedImages);
-  //    } catch (e) {
-  //        console.log(e);
-  //    }
-  //}
+  const [selectedImage, setSelectedImage] = useState<string[]>([]);
+  const [isViewerOpen, setIsViewerOpen] = useState(false);
 
   const galleryImages = [
     {
       url: 'http://localhost:5000/gallery/2.jpeg',
       title: 'Kandinskij',
-      subtitle: 'Predefined Style'
+      subtitle: 'Predefined Style',
+      style: 'http://localhost:5000/predefined_styles/kandinskij.jpg',
+      content: 'http://localhost:5000/gallery/1.jpg'
     },
     {
       url: 'http://localhost:5000/gallery/3.jpeg',
       title: 'Picasso',
-      subtitle: 'Predefined Style'
+      subtitle: 'Predefined Style',
+      style: 'http://localhost:5000/predefined_styles/picasso.jpg',
+      content: 'http://localhost:5000/gallery/1.jpg'
     },
     {
       url: 'http://localhost:5000/gallery/4.jpeg',
       title: 'Classic',
-      subtitle: 'Custom Style'
+      subtitle: 'Custom Style',
+      style: 'http://localhost:5000/predefined_styles/classic.jpg',
+      content: 'http://localhost:5000/gallery/1.jpg'
     },
     {
       url: 'http://localhost:5000/gallery/5.jpeg',
       title: 'Monet',
-      subtitle: 'Predefined Style'
+      subtitle: 'Predefined Style',
+      style: 'http://localhost:5000/predefined_styles/monet.jpg',
+      content: 'http://localhost:5000/gallery/1.jpg'
     }
   ]
 
-  //useEffect(() => {
-  //    fetchImages();
-  //}, []);
-  //
+  const openViewer = useCallback((img: any) => {
+    setSelectedImage([img]);
+    setIsViewerOpen(true);
+  }, []);
+
+  const closeViewer = () => {
+    setSelectedImage([]);
+    setIsViewerOpen(false);
+  };
 
     return (
       <IonPage>   
@@ -57,6 +61,7 @@ const Tab2: React.FC = () => {
         </IonToolbar>
       </IonHeader>
       <IonContent fullscreen>
+
       {galleryImages.map((img, index) => (
       <IonCard key={index} color="dark">
             <IonPhotoViewer
@@ -72,10 +77,24 @@ const Tab2: React.FC = () => {
        <IonCardHeader>
         <IonCardSubtitle>{img.subtitle}</IonCardSubtitle>
         <IonCardTitle>{img.title}</IonCardTitle>
-        
+        <IonButton className='action1' fill="clear" onClick={() => openViewer(img.style)}>Style</IonButton>
+        <IonButton className='action2' fill="clear" onClick={() => openViewer(img.content)}>Content</IonButton>
       </IonCardHeader>
        </IonCard>
       ))}
+
+      {isViewerOpen && (
+        <ImageViewer
+          src={ selectedImage }
+          disableScroll={ false }
+          closeOnClickOutside={ true }
+          onClose={ closeViewer }
+          backgroundStyle={{
+            backgroundColor: "rgba(0,0,0,0.5)"
+      }}
+        />
+      )}
+
       </IonContent>
       </IonPage>
     );
