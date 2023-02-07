@@ -44,6 +44,7 @@ parser.add_argument('--batch_size', type=int, default=8)
 parser.add_argument('--style_weight', type=float, default=3.0)
 parser.add_argument('--content_weight', type=float, default=1.0)
 parser.add_argument('--SSC_weight', type=float, default=3.0)
+parser.add_argument('--TV_weight', type=float, default=1e-5)
 parser.add_argument('--n_threads', type=int, default=12)
 parser.add_argument('--log_steps', type=int, default=40)
 parser.add_argument('--save_model_interval', type=int, default=5000)
@@ -67,7 +68,7 @@ class FlatFolderDataset(data.Dataset):
     def __init__(self, root, transform):
         super(FlatFolderDataset, self).__init__()
         self.root = root
-        self.paths = list(Path(self.root).glob('*.jpg'))
+        self.paths = list(Path(self.root).glob('*.jpg')) + list(Path(self.root).glob('*.png'))
         self.transform = transform
 
     def __getitem__(self, index):
@@ -85,8 +86,8 @@ class FlatFolderDataset(data.Dataset):
 class ContentStyleDataset(data.Dataset):
   def __init__(self, content_dataset, style_dataset, transform):
     super(ContentStyleDataset, self).__init__()
-    self.content_dataset = list(Path(content_dataset).glob('*.jpg'))
-    self.style_dataset = list(Path(style_dataset).glob('*.jpg'))
+    self.content_dataset = list(Path(content_dataset).glob('*.jpg')) + list(Path(content_dataset).glob('*.png'))
+    self.style_dataset = list(Path(style_dataset).glob('*.jpg')) + list(Path(style_dataset).glob('*.png'))
     self.transform = transform
 
   def __getitem__(self, index):
@@ -143,7 +144,12 @@ def main():
 
   dataset = ContentStyleDataset(args.content_dir, args.style_dir, transform)
 
-  network = net.Net(vgg, content_encoder, style_encoder, modulator, decoder, args.lr, args.lr_decay, train_dataset=dataset, n_workers=args.n_threads, log_steps=args.log_steps)
+  network = net.Net(vgg, content_encoder, style_encoder, modulator, decoder, args.lr, args.lr_decay,\
+    style_weight=args.style_weight, \
+    content_weight=args.content_weight, \
+    SSC_weight=args.SSC_weight, \
+    TV_weight=args.TV_weight, \
+    train_dataset=dataset, n_workers=args.n_threads, log_steps=args.log_steps)
 
   wandb_logger.watch(network)
 

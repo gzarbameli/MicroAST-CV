@@ -4,9 +4,19 @@ import pytorch_lightning as pl
 import torch
 from pytorch_lightning.callbacks import Callback
 from torchvision.utils import make_grid
+from torchmetrics import TotalVariation
+from torchmetrics.image.fid import FrechetInceptionDistance
+
+
 
 from function import adaptive_instance_normalization as featMod
 from function import calc_mean_std
+
+# Custom loss functions
+tv_loss = TotalVariation().to(device="cuda")
+frechet_loss = FrechetInceptionDistance(feature=64, normalize=True).to(device="cuda")
+
+
 
 class ConvLayer(nn.Module):
     def __init__(self, in_channels, out_channels, kernel_size, stride, groupnum):
@@ -292,7 +302,8 @@ vgg = nn.Sequential(
 )
 
 class Net(pl.LightningModule):
-    def __init__(self, vgg, content_encoder, style_encoder, modulator, decoder, lr, decay_rate, train_dataset, batch_size=8, sample_path='samples/', log_steps=64, n_workers=16):
+    def __init__(self, vgg, content_encoder, style_encoder, modulator, decoder, lr, decay_rate, train_dataset, style_weight, content_weight, SSC_weight, TV_weight, \
+        batch_size=8, sample_path='samples/', log_steps=64, n_workers=16):
         super(Net, self).__init__()
         self.save_hyperparameters(ignore=['vgg', 'content_encoder', 'style_encoder', 'modulator', 'decoder'])
 
@@ -396,9 +407,18 @@ class Net(pl.LightningModule):
         
             loss_contrastive = loss_contrastive + pos_loss/neg_loss
 
-        loss = loss_c + loss_s + loss_contrastive
+        # total variation loss
+        loss_tv = tv_loss(res)
 
-        return res, loss_c, loss_s, loss_contrastive, loss
+        # apply weights
+        loss_c = self.hparams.content_weight * loss_c
+        loss_s = self.hparams.style_weight * loss_s
+        loss_contrastive = self.hparams.SSC_weight * loss_contrastive
+        loss_tv = self.hparams.TV_weight * loss_tv
+
+        loss = loss_c + loss_s + loss_contrastive + loss_tv
+
+        return res, loss_c, loss_s, loss_contrastive, loss_tv, loss
     
     def configure_optimizers(self) -> torch.optim.Optimizer:
         optimizer = torch.optim.Adam([
@@ -417,12 +437,13 @@ class Net(pl.LightningModule):
       return DataLoader(self.hparams.train_dataset, batch_size=self.hparams.batch_size, sampler=InfiniteSamplerWrapper(self.hparams.train_dataset), num_workers=self.hparams.n_workers)
 
     def training_step(self, batch, batch_idx):
-        res, loss_c, loss_s, loss_contrastive, loss = self(batch)
+        res, loss_c, loss_s, loss_contrastive, loss_tv, loss = self(batch)
 
         self.log('train_loss', loss, prog_bar=True)
         self.log('train_loss_c', loss_c, prog_bar=True)
         self.log('train_loss_s', loss_s, prog_bar=True)
         self.log('train_loss_contrastive', loss_contrastive, prog_bar=True)
+        self.log('train_total_variation', loss_tv, prog_bar=True)
 
         return {"loss": loss, "res": res}
 
@@ -462,7 +483,6 @@ class LogPredictionsCallback(Callback):
           nrow = min(n, styled_images.shape[0])
 
           images_t = torch.concat([content[:nrow], style[:nrow], styled_images], dim=0)
-
 
           image_array = make_grid(images_t, nrow=nrow)
           
