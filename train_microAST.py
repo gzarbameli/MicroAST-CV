@@ -6,13 +6,13 @@ import torch.backends.cudnn as cudnn
 import torch.nn as nn
 import torch.utils.data as data
 from PIL import Image, ImageFile
-from tensorboardX import SummaryWriter
+import wandb
 from torchvision import transforms
-from tqdm import tqdm
-from torchvision.utils import save_image
 
 import net_microAST as net
 from sampler import InfiniteSamplerWrapper
+import pytorch_lightning as pl
+from pytorch_lightning.loggers import WandbLogger
 
 cudnn.benchmark = True
 Image.MAX_IMAGE_PIXELS = None  # Disable DecompressionBombError
@@ -45,6 +45,7 @@ parser.add_argument('--style_weight', type=float, default=3.0)
 parser.add_argument('--content_weight', type=float, default=1.0)
 parser.add_argument('--SSC_weight', type=float, default=3.0)
 parser.add_argument('--n_threads', type=int, default=12)
+parser.add_argument('--log_steps', type=int, default=40)
 parser.add_argument('--save_model_interval', type=int, default=5000)
 parser.add_argument('--gpu_id', type=int, default=0)
 parser.add_argument('--resume', action='store_true', help='train the model from the checkpoint')
@@ -81,6 +82,30 @@ class FlatFolderDataset(data.Dataset):
     def name(self):
         return 'FlatFolderDataset'
 
+class ContentStyleDataset(data.Dataset):
+  def __init__(self, content_dataset, style_dataset, transform):
+    super(ContentStyleDataset, self).__init__()
+    self.content_dataset = list(Path(content_dataset).glob('*.jpg'))
+    self.style_dataset = list(Path(style_dataset).glob('*.jpg'))
+    self.transform = transform
+
+  def __getitem__(self, index):
+    content_img = self.content_dataset[index % len(self.content_dataset)]
+    style_img = self.style_dataset[index % len(self.style_dataset)]
+
+    content_img = Image.open(str(content_img)).convert('RGB')
+    content_img = self.transform(content_img)
+
+    style_img = Image.open(str(style_img)).convert('RGB')
+    style_img = self.transform(style_img)
+    
+    return content_img, style_img
+
+  def __len__(self):
+    return max(len(self.content_dataset), len(self.style_dataset))
+
+  def name(self):
+    return 'ContentStyleDataset'
 
 def adjust_learning_rate(optimizer, iteration_count):
     """Imitating the original implementation"""
@@ -89,14 +114,21 @@ def adjust_learning_rate(optimizer, iteration_count):
         param_group['lr'] = lr
 
 def main():
-  device = torch.device('cuda:%d' % args.gpu_id)
+  from pytorch_lightning.callbacks import ModelCheckpoint
+  from net_microAST import LogPredictionsCallback
+  from pytorch_lightning.tuner.tuning import Tuner
+
   save_dir = Path(args.save_dir)
   save_dir.mkdir(exist_ok=True, parents=True)
   log_dir = Path(args.log_dir)
   log_dir.mkdir(exist_ok=True, parents=True)
   checkpoints_dir = Path(args.checkpoints)
-  checkpoints_dir.mkdir(exist_ok=True, parents=True)
-  writer = SummaryWriter(log_dir=str(log_dir))
+  
+  wandb_logger = WandbLogger(project='microAST', name='microAST', log_model="all", save_dir=log_dir, save_code=False)
+
+  wandb.login()
+
+  wandb.run.log_code(".") # log code
 
   vgg = net.vgg
   vgg.load_state_dict(torch.load(args.vgg))
@@ -107,107 +139,30 @@ def main():
   modulator = net.Modulator()
   decoder = net.Decoder()
 
-  network = net.Net(vgg, content_encoder, style_encoder, modulator, decoder)
-  network.train()
-  network.to(device)
+  transform = train_transform()
 
-  content_tf = train_transform()
-  style_tf = train_transform()
+  dataset = ContentStyleDataset(args.content_dir, args.style_dir, transform)
 
-  content_dataset = FlatFolderDataset(args.content_dir, content_tf)
-  style_dataset = FlatFolderDataset(args.style_dir, style_tf)
+  network = net.Net(vgg, content_encoder, style_encoder, modulator, decoder, args.lr, args.lr_decay, train_dataset=dataset, n_workers=args.n_threads, log_steps=args.log_steps)
 
-  content_iter = iter(data.DataLoader(
-      content_dataset, batch_size=args.batch_size,
-      sampler=InfiniteSamplerWrapper(content_dataset),
-      num_workers=args.n_threads))
-  style_iter = iter(data.DataLoader(
-      style_dataset, batch_size=args.batch_size,
-      sampler=InfiniteSamplerWrapper(style_dataset),
-      num_workers=args.n_threads))
+  wandb_logger.watch(network)
 
+  if(args.resume):
+    trainer = pl.Trainer(devices=1, max_epochs=1, precision=16, limit_train_batches=args.max_iter, accelerator="gpu", callbacks=[LogPredictionsCallback(), ModelCheckpoint(dirpath=checkpoints_dir, save_top_k=-1, verbose=True, every_n_train_steps=1000)], resume_from_checkpoint=checkpoints_dir, logger=wandb_logger)
+  else:
+    trainer = pl.Trainer(devices=1, limit_train_batches=args.max_iter, max_epochs=1, precision=16, \
+        accelerator="gpu", \
+          callbacks=[LogPredictionsCallback(), \
+            ModelCheckpoint(dirpath=checkpoints_dir, save_top_k=-1, verbose=True, every_n_train_steps=1000)],logger=wandb_logger)
 
-  optimizer = torch.optim.Adam([
-      {'params':network.content_encoder.parameters()}, 
-      {'params':network.style_encoder.parameters()}, 
-      {'params':network.modulator.parameters()},
-      {'params':network.decoder.parameters()}
-      ], lr=args.lr)
-
-  start_iter = -1
-
-  # continue training from the checkpoint
-  if args.resume:
-      checkpoints = torch.load(args.checkpoints + '/checkpoints.pth.tar')
-      network.load_state_dict(checkpoints['net'])
-      optimizer.load_state_dict(checkpoints['optimizer'])
-      start_iter = checkpoints['epoch']
+  # tune hyperparameters
+  tuner = Tuner(trainer)
+  tuner.scale_batch_size(network, mode='power', init_val=4, max_trials=2)
 
   # training
-  for i in tqdm(range(start_iter+1, args.max_iter)):
-      adjust_learning_rate(optimizer, iteration_count=i)
-      content_images = next(content_iter).to(device)
-      style_images = next(style_iter).to(device)
-      stylized_results, loss_c, loss_s, loss_contrastive = network(content_images, style_images)
-      loss_c = args.content_weight * loss_c
-      loss_s = args.style_weight * loss_s
-      loss_contrastive = args.SSC_weight * loss_contrastive
-      loss = loss_c + loss_s + loss_contrastive
+  trainer.fit(network)
 
-      optimizer.zero_grad()
-      loss.backward()
-      optimizer.step()
-
-      writer.add_scalar('loss_content', loss_c.item(), i + 1)
-      writer.add_scalar('loss_style', loss_s.item(), i + 1)
-      writer.add_scalar('loss_contrastive', loss_contrastive.item(), i + 1)
-      
-      ############################################################################
-      # save intermediate samples
-      output_dir = Path(args.sample_path)
-      output_dir.mkdir(exist_ok=True, parents=True)
-      if (i + 1) % 500 == 0: 
-          visualized_imgs = torch.cat([content_images, style_images, stylized_results])
-          
-          output_name = output_dir / 'output{:d}.jpg'.format(i + 1)
-          save_image(visualized_imgs, str(output_name), nrow=args.batch_size)
-          print('[%d/%d] loss_content:%.4f, loss_style:%.4f, loss_contrastive:%.4f' \
-                % (i+1, args.max_iter, loss_c.item(), loss_s.item(), loss_contrastive.item()))    
-      ############################################################################
-
-      if (i + 1) % args.save_model_interval == 0 or (i + 1) == args.max_iter:
-          state_dict = network.content_encoder.state_dict()
-          for key in state_dict.keys():
-              state_dict[key] = state_dict[key].to(torch.device('cpu'))
-          torch.save(state_dict, save_dir /
-                    'content_encoder_iter_{:d}.pth.tar'.format(i + 1))
-          
-          state_dict = network.style_encoder.state_dict()
-          for key in state_dict.keys():
-              state_dict[key] = state_dict[key].to(torch.device('cpu'))
-          torch.save(state_dict, save_dir /
-                    'style_encoder_iter_{:d}.pth.tar'.format(i + 1))
-          
-          state_dict = network.modulator.state_dict()
-          for key in state_dict.keys():
-              state_dict[key] = state_dict[key].to(torch.device('cpu'))
-          torch.save(state_dict, save_dir /
-                    'modulator_iter_{:d}.pth.tar'.format(i + 1))
-
-          state_dict = network.decoder.state_dict()
-          for key in state_dict.keys():
-              state_dict[key] = state_dict[key].to(torch.device('cpu'))
-          torch.save(state_dict, save_dir /
-                    'decoder_iter_{:d}.pth.tar'.format(i + 1))
-
-          checkpoints = {
-              "net": network.state_dict(),
-              "optimizer": optimizer.state_dict(),
-              "epoch": i
-          }
-          torch.save(checkpoints, checkpoints_dir / 'checkpoints.pth.tar')  
-          
-  writer.close()
+  wandb.finish()
 
 if __name__ == '__main__':
     main()

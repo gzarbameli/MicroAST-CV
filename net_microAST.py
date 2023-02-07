@@ -1,4 +1,9 @@
+from pathlib import Path
 import torch.nn as nn
+import pytorch_lightning as pl
+import torch
+from pytorch_lightning.callbacks import Callback
+from torchvision.utils import make_grid
 
 from function import adaptive_instance_normalization as featMod
 from function import calc_mean_std
@@ -286,10 +291,11 @@ vgg = nn.Sequential(
     nn.ReLU()  # relu5-4
 )
 
-
-class Net(nn.Module):
-    def __init__(self, vgg, content_encoder, style_encoder, modulator, decoder):
+class Net(pl.LightningModule):
+    def __init__(self, vgg, content_encoder, style_encoder, modulator, decoder, lr, decay_rate, train_dataset, batch_size=8, sample_path='samples/', log_steps=64, n_workers=16):
         super(Net, self).__init__()
+        self.save_hyperparameters(ignore=['vgg', 'content_encoder', 'style_encoder', 'modulator', 'decoder'])
+
         vgg_enc_layers = list(vgg.children())
         self.vgg_enc_1 = nn.Sequential(*vgg_enc_layers[:4])  # input -> relu1_1
         self.vgg_enc_2 = nn.Sequential(*vgg_enc_layers[4:11])  # relu1_1 -> relu2_1
@@ -314,7 +320,7 @@ class Net(nn.Module):
             func = getattr(self, 'vgg_enc_{:d}'.format(i + 1))
             results.append(func(results[-1]))
         return results[1:]
-   
+
 
     # extract relu4_1 from input image
     def encode_vgg_content(self, input):
@@ -332,13 +338,13 @@ class Net(nn.Module):
         input_mean, input_std = calc_mean_std(input)
         target_mean, target_std = calc_mean_std(target)
         return self.mse_loss(input_mean, target_mean) + \
-               self.mse_loss(input_std, target_std)
-    
-    
+                self.mse_loss(input_std, target_std)
 
-    def forward(self, content, style, alpha=1.0):
+    def forward(self, batch, alpha=1.0):
         assert 0 <= alpha <= 1
         
+        content, style = batch
+
         # extract style modulation signals
         style_feats = self.style_encoder(style)
         filter_weights, filter_biases = self.modulator(style_feats)
@@ -372,28 +378,55 @@ class Net(nn.Module):
             for j in range(int(style.size(0))):
                 if j==i:
                     FeatMod_loss = self.calc_style_loss(res_style_feats[0][i].unsqueeze(0), style_feats[0][j].unsqueeze(0)) + \
-                                   self.calc_style_loss(res_style_feats[1][i].unsqueeze(0), style_feats[1][j].unsqueeze(0))
+                                  self.calc_style_loss(res_style_feats[1][i].unsqueeze(0), style_feats[1][j].unsqueeze(0))
                     FilterMod_loss = self.calc_content_loss(res_filter_weights[0][i], filter_weights[0][j]) + \
-                                     self.calc_content_loss(res_filter_weights[1][i], filter_weights[1][j]) + \
-                                     self.calc_content_loss(res_filter_biases[0][i], filter_biases[0][j]) + \
-                                     self.calc_content_loss(res_filter_biases[1][i], filter_biases[1][j])
+                                    self.calc_content_loss(res_filter_weights[1][i], filter_weights[1][j]) + \
+                                    self.calc_content_loss(res_filter_biases[0][i], filter_biases[0][j]) + \
+                                    self.calc_content_loss(res_filter_biases[1][i], filter_biases[1][j])
                     pos_loss = FeatMod_loss + FilterMod_loss
                 else:
                     FeatMod_loss = self.calc_style_loss(res_style_feats[0][i].unsqueeze(0), res_style_feats[0][j].unsqueeze(0)) + \
-                                   self.calc_style_loss(res_style_feats[1][i].unsqueeze(0), style_feats[1][j].unsqueeze(0))
+                                  self.calc_style_loss(res_style_feats[1][i].unsqueeze(0), style_feats[1][j].unsqueeze(0))
                     FilterMod_loss = self.calc_content_loss(res_filter_weights[0][i], filter_weights[0][j]) + \
-                                     self.calc_content_loss(res_filter_weights[1][i], filter_weights[1][j]) + \
-                                     self.calc_content_loss(res_filter_biases[0][i], filter_biases[0][j]) + \
-                                     self.calc_content_loss(res_filter_biases[1][i], filter_biases[1][j])
+                                    self.calc_content_loss(res_filter_weights[1][i], filter_weights[1][j]) + \
+                                    self.calc_content_loss(res_filter_biases[0][i], filter_biases[0][j]) + \
+                                    self.calc_content_loss(res_filter_biases[1][i], filter_biases[1][j])
                     neg_loss = neg_loss + FeatMod_loss + FilterMod_loss
                     
         
             loss_contrastive = loss_contrastive + pos_loss/neg_loss
-                                   
-        return res, loss_c, loss_s, loss_contrastive
-    
 
+        loss = loss_c + loss_s + loss_contrastive
+
+        return res, loss_c, loss_s, loss_contrastive, loss
     
+    def configure_optimizers(self) -> torch.optim.Optimizer:
+        optimizer = torch.optim.Adam([
+          {'params':self.content_encoder.parameters()}, 
+          {'params':self.style_encoder.parameters()}, 
+          {'params':self.modulator.parameters()},
+          {'params':self.decoder.parameters()}
+          ], lr=self.hparams.lr)
+        scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer, gamma=self.hparams.decay_rate)
+        
+        return [optimizer], [{"scheduler": scheduler, "interval": "epoch"}]
+
+    def train_dataloader(self):
+      from torch.utils.data import DataLoader
+      from sampler import InfiniteSamplerWrapper
+      return DataLoader(self.hparams.train_dataset, batch_size=self.hparams.batch_size, sampler=InfiniteSamplerWrapper(self.hparams.train_dataset), num_workers=self.hparams.n_workers)
+
+    def training_step(self, batch, batch_idx):
+        res, loss_c, loss_s, loss_contrastive, loss = self(batch)
+
+        self.log('train_loss', loss, prog_bar=True)
+        self.log('train_loss_c', loss_c, prog_bar=True)
+        self.log('train_loss_s', loss_s, prog_bar=True)
+        self.log('train_loss_contrastive', loss_contrastive, prog_bar=True)
+
+        return {"loss": loss, "res": res}
+
+
 class TestNet(nn.Module):
     def __init__(self, content_encoder, style_encoder, modulator, decoder):
         super(TestNet, self).__init__()
@@ -402,7 +435,6 @@ class TestNet(nn.Module):
         self.style_encoder = style_encoder
         self.modulator = modulator
         self.decoder = decoder
-
 
     def forward(self, content, style, alpha=1.0):
         assert 0 <= alpha <= 1
@@ -415,3 +447,31 @@ class TestNet(nn.Module):
         res = self.decoder(content_feats, style_feats, filter_weights, filter_biases, alpha)
         
         return res
+
+class LogPredictionsCallback(Callback):
+  def on_train_batch_end(
+        self, trainer, pl_module, outputs, batch, batch_idx: int):
+        from torchvision.utils import save_image
+        import wandb
+        
+        if(trainer.global_step % 50 == 0):
+          n = 10
+          content, style = batch
+
+          styled_images = outputs['res'][:n]
+          nrow = min(n, styled_images.shape[0])
+
+          images_t = torch.concat([content[:nrow], style[:nrow], styled_images], dim=0)
+
+
+          image_array = make_grid(images_t, nrow=nrow)
+          
+          images = wandb.Image(image_array, caption="Top: content, Middle: style, Bottom: styled images")
+
+          output_dir = Path(pl_module.hparams.sample_path)
+          output_dir.mkdir(exist_ok=True, parents=True)
+
+          output_name = output_dir / 'output{:d}.jpg'.format(batch_idx + 1)
+          save_image(images_t, str(output_name), nrow=nrow)
+        
+          wandb.log({"examples": images})
