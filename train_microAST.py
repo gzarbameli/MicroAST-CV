@@ -52,6 +52,8 @@ parser.add_argument('--gpu_id', type=int, default=0)
 parser.add_argument('--resume', action='store_true', help='train the model from the checkpoint')
 parser.add_argument('--checkpoints', default='./checkpoints',
                     help='Directory to save the checkpoint')
+parser.add_argument('--ckpt_path', type=str, default='./checkpoints/last.ckpt', 
+                    help='Path to the checkpoint to resume training')
 args = parser.parse_args()
 
 
@@ -124,6 +126,9 @@ def main():
   log_dir = Path(args.log_dir)
   log_dir.mkdir(exist_ok=True, parents=True)
   checkpoints_dir = Path(args.checkpoints)
+
+  if(args.resume):
+    checkpoint_path = Path(args.ckpt_path)
   
   wandb_logger = WandbLogger(project='microAST', name='microAST', log_model="all", save_dir=log_dir, save_code=False)
 
@@ -143,7 +148,7 @@ def main():
   transform = train_transform()
 
   dataset = ContentStyleDataset(args.content_dir, args.style_dir, transform)
-
+  
   network = net.Net(vgg, content_encoder, style_encoder, modulator, decoder, args.lr, args.lr_decay,\
     style_weight=args.style_weight, \
     content_weight=args.content_weight, \
@@ -154,19 +159,22 @@ def main():
   wandb_logger.watch(network)
 
   if(args.resume):
-    trainer = pl.Trainer(devices=1, max_epochs=1, precision=16, limit_train_batches=args.max_iter, accelerator="gpu", callbacks=[LogPredictionsCallback(), ModelCheckpoint(dirpath=checkpoints_dir, save_top_k=-1, verbose=True, every_n_train_steps=1000)], resume_from_checkpoint=checkpoints_dir, logger=wandb_logger)
+    trainer = pl.Trainer(devices=1, max_epochs=1, precision=16, limit_train_batches=args.max_iter, accelerator="gpu", callbacks=[LogPredictionsCallback(), ModelCheckpoint(dirpath=checkpoints_dir, save_top_k=-1, verbose=True, every_n_train_steps=100)], logger=wandb_logger)
   else:
     trainer = pl.Trainer(devices=1, limit_train_batches=args.max_iter, max_epochs=1, precision=16, \
         accelerator="gpu", \
           callbacks=[LogPredictionsCallback(), \
-            ModelCheckpoint(dirpath=checkpoints_dir, save_top_k=-1, verbose=True, every_n_train_steps=1000)],logger=wandb_logger)
+            ModelCheckpoint(dirpath=checkpoints_dir, save_top_k=-1, verbose=True, every_n_train_steps=100)],logger=wandb_logger)
 
   # tune hyperparameters
   tuner = Tuner(trainer)
-  tuner.scale_batch_size(network, mode='power', init_val=4, max_trials=2)
+  tuner.scale_batch_size(network, mode='power', init_val=8, max_trials=1)
 
   # training
-  trainer.fit(network)
+  if(args.resume):
+    trainer.fit(network, ckpt_path=checkpoint_path)
+  else:
+    trainer.fit(network)
 
   wandb.finish()
 
