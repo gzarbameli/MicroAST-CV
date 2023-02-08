@@ -33,10 +33,10 @@ parser.add_argument('--style', type=str,
                     help='File path to the style image')
 parser.add_argument('--style_dir', type=str,
                     help='Directory path to a batch of style images')
-parser.add_argument('--content_encoder', type=str, default='models/content_encoder_iter_160000.pth.tar')
-parser.add_argument('--style_encoder', type=str, default='models/style_encoder_iter_160000.pth.tar')
-parser.add_argument('--modulator', type=str, default='models/modulator_iter_160000.pth.tar')
-parser.add_argument('--decoder', type=str, default='models/decoder_iter_160000.pth.tar')
+parser.add_argument('--content_encoder', type=str, default='models/content_encoder_iter_150.pth')
+parser.add_argument('--style_encoder', type=str, default='models/style_encoder_iter_150.pth')
+parser.add_argument('--modulator', type=str, default='models/modulator_iter_150.pth')
+parser.add_argument('--decoder', type=str, default='models/decoder_iter_150.pth')
 
 # Additional options
 parser.add_argument('--content_size', type=int, default=0,
