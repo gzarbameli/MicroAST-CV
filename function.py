@@ -1,5 +1,10 @@
 import torch
 
+def get_model_state(model):
+  state_dict = model.state_dict()
+  for key in state_dict.keys():
+      state_dict[key] = state_dict[key].to(torch.device('cpu'))
+  return state_dict
 
 def calc_mean_std(feat, eps=1e-5):
     # eps is a small value added to the variance to avoid divide-by-zero.

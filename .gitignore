@@ -2,3 +2,7 @@ application/node_modules/
 inputs
 models/vgg_normalised.pth
 dataset
+logs
+__pycache__
+checkpoints
+samples

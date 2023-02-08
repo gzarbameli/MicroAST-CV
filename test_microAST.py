@@ -10,7 +10,6 @@ from torchvision.utils import save_image
 import net_microAST as net
 
 import traceback
-import thop
 
 
 def test_transform(size, crop):

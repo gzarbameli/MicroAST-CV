@@ -10,7 +10,6 @@ import wandb
 from torchvision import transforms
 
 import net_microAST as net
-from sampler import InfiniteSamplerWrapper
 import pytorch_lightning as pl
 from pytorch_lightning.loggers import WandbLogger
 
@@ -23,10 +22,10 @@ parser = argparse.ArgumentParser()
 # Basic options
 parser.add_argument('--content_dir', type=str,
                     help='Directory path to a batch of content images',
-                    default='./inputs/datasets/ms-coco') 
+                    default='dataset/ms-coco') 
 parser.add_argument('--style_dir', type=str,
                     help='Directory path to a batch of style images',
-                    default='./inputs/datasets/wikiart') 
+                    default='dataset/wikiart') 
 
 parser.add_argument('--vgg', type=str, default='models/vgg_normalised.pth')
 parser.add_argument('--sample_path', type=str, default='samples', 
@@ -126,6 +125,7 @@ def main():
   log_dir = Path(args.log_dir)
   log_dir.mkdir(exist_ok=True, parents=True)
   checkpoints_dir = Path(args.checkpoints)
+  checkpoints_dir.mkdir(exist_ok=True, parents=True)
 
   if(args.resume):
     checkpoint_path = Path(args.ckpt_path)
@@ -159,16 +159,16 @@ def main():
   wandb_logger.watch(network)
 
   if(args.resume):
-    trainer = pl.Trainer(devices=1, max_epochs=1, precision=16, limit_train_batches=args.max_iter, accelerator="gpu", callbacks=[LogPredictionsCallback(), ModelCheckpoint(dirpath=checkpoints_dir, save_top_k=-1, verbose=True, every_n_train_steps=100)], logger=wandb_logger)
+    trainer = pl.Trainer(devices=1, max_epochs=1, precision=16, limit_train_batches=args.max_iter, accelerator="gpu", callbacks=[LogPredictionsCallback(), net.CustomModelCheckpoint(dirpath=checkpoints_dir, every_n_train_steps=100)], logger=wandb_logger)
   else:
     trainer = pl.Trainer(devices=1, limit_train_batches=args.max_iter, max_epochs=1, precision=16, \
         accelerator="gpu", \
           callbacks=[LogPredictionsCallback(), \
-            ModelCheckpoint(dirpath=checkpoints_dir, save_top_k=-1, verbose=True, every_n_train_steps=100)],logger=wandb_logger)
+            net.CustomModelCheckpoint(dirpath=checkpoints_dir,  every_n_train_steps=50)],logger=wandb_logger)
 
   # tune hyperparameters
   tuner = Tuner(trainer)
-  tuner.scale_batch_size(network, mode='power', init_val=8, max_trials=1)
+  tuner.scale_batch_size(network, mode='power', init_val=8, max_trials=0)
 
   # training
   if(args.resume):

@@ -339,7 +339,14 @@ class Net(pl.LightningModule):
             input = getattr(self, 'vgg_enc_{:d}'.format(i + 1))(input)
         return input
     
-    
+    def save_model(self, dirpath, fn_append):
+      from function import get_model_state
+
+      torch.save(get_model_state(self.decoder), dirpath / ('decoder' + fn_append + '.pth'))
+      torch.save(get_model_state(self.modulator), dirpath / ('modulator' + fn_append + '.pth'))
+      torch.save(get_model_state(self.style_encoder), dirpath / ('style_encoder' + fn_append + '.pth'))
+      torch.save(get_model_state(self.content_encoder), dirpath / ('content_encoder' + fn_append + '.pth'))
+
     def calc_content_loss(self, input, target):
         assert (input.size() == target.size())
         return self.mse_loss(input, target)
@@ -468,6 +475,16 @@ class TestNet(nn.Module):
         res = self.decoder(content_feats, style_feats, filter_weights, filter_biases, alpha)
         
         return res
+
+class CustomModelCheckpoint(Callback):
+  def __init__(self, every_n_train_steps, dirpath):
+    super().__init__()
+    self.every_n_train_steps = every_n_train_steps
+    self.dirpath = dirpath
+
+  def on_train_batch_end(self, trainer: "pl.Trainer", pl_module: "pl.LightningModule", outputs, batch, batch_idx: int) -> None:
+    if(trainer.global_step % self.every_n_train_steps == 0):
+      pl_module.save_model(self.dirpath, '_iter_{}'.format(trainer.global_step))
 
 class LogPredictionsCallback(Callback):
   def on_train_batch_end(
