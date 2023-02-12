@@ -52,6 +52,8 @@ parser.add_argument('--resume', action='store_true', help='train the model from 
 parser.add_argument('--dec_tuned', action='store_true', help='use the modified decoder')
 parser.add_argument('--checkpoints', default='./checkpoints',
                     help='Directory to save the checkpoint')
+parser.add_argument('--loss_func', default='mse',
+                    help='Loss function along the VGG. "mse", "cos" or "l1')
 parser.add_argument('--ckpt_path', type=str, default='./checkpoints/last.ckpt', 
                     help='Path to the checkpoint to resume training')
 args = parser.parse_args()
@@ -158,12 +160,12 @@ def main():
     content_weight=args.content_weight, \
     SSC_weight=args.SSC_weight, \
     TV_weight=args.TV_weight, \
-    train_dataset=dataset, n_workers=args.n_threads, log_steps=args.log_steps)
+    train_dataset=dataset, n_workers=args.n_threads, log_steps=args.log_steps, loss_func=args.loss_func)
 
   wandb_logger.watch(network)
 
   trainer = pl.Trainer(devices=1, limit_train_batches=args.max_iter, max_epochs=1, precision=16, accelerator="gpu", callbacks = \
-      [LogPredictionsCallback(), ModelCheckpoint(dirpath=checkpoints_dir, save_top_k=-1, every_n_train_steps=5000, verbose=True), net.CustomModelCheckpoint(dirpath=checkpoints_dir,  every_n_train_steps=5000)], \
+      [LogPredictionsCallback(), ModelCheckpoint(dirpath=checkpoints_dir, save_top_k=-1, every_n_train_steps=50, verbose=True), net.CustomModelCheckpoint(dirpath=checkpoints_dir,  every_n_train_steps=5000)], \
         logger=wandb_logger)
 
   # tune hyperparameters
