@@ -7,16 +7,14 @@ from torchvision.utils import make_grid
 from torchmetrics import TotalVariation
 from torchmetrics.image.fid import FrechetInceptionDistance
 
-
-
 from function import adaptive_instance_normalization as featMod
 from function import calc_mean_std
 
 # Custom loss functions
 tv_loss = TotalVariation().to(device="cuda")
 frechet_loss = FrechetInceptionDistance(feature=64, normalize=True).to(device="cuda")
-
-
+cosine_sim = nn.CosineSimilarity(dim=1, eps=1e-6).to(device="cuda")
+l1_loss = nn.L1Loss()
 
 class ConvLayer(nn.Module):
     def __init__(self, in_channels, out_channels, kernel_size, stride, groupnum):
@@ -303,7 +301,7 @@ vgg = nn.Sequential(
 
 class Net(pl.LightningModule):
     def __init__(self, vgg, content_encoder, style_encoder, modulator, decoder, lr, decay_rate, train_dataset, style_weight, content_weight, SSC_weight, TV_weight, \
-        batch_size=8, sample_path='samples/', log_steps=64, n_workers=16):
+        batch_size=8, sample_path='samples/', log_steps=64, n_workers=16, loss_func="mse"):
         super(Net, self).__init__()
         self.save_hyperparameters(ignore=['vgg', 'content_encoder', 'style_encoder', 'modulator', 'decoder'])
 
@@ -358,6 +356,29 @@ class Net(pl.LightningModule):
         return self.mse_loss(input_mean, target_mean) + \
                 self.mse_loss(input_std, target_std)
 
+    def calc_content_loss_cos(self, input, target):
+        assert (input.size() == target.size())
+        return torch.mean(torch.flatten(1-cosine_sim(input, target)))
+
+    def calc_style_loss_cos(self, input, target):
+        assert (input.size() == target.size())
+        input_mean, input_std = calc_mean_std(input)
+        target_mean, target_std = calc_mean_std(target)
+        return torch.mean(torch.flatten((1-cosine_sim(input_mean, target_mean)))) + \
+                torch.mean(torch.flatten((1-cosine_sim(input_std, target_std))))
+
+    def calc_content_loss_l1(self, input, target):
+        assert (input.size() == target.size())
+        return l1_loss(input, target)
+
+    def calc_style_loss_l1(self, input, target):
+        assert (input.size() == target.size())
+        input_mean, input_std = calc_mean_std(input)
+        target_mean, target_std = calc_mean_std(target)
+        return l1_loss(input_mean, target_mean) + \
+                l1_loss(input_std, target_std)
+
+
     def forward(self, batch, alpha=1.0):
         assert 0 <= alpha <= 1
         
@@ -379,10 +400,20 @@ class Net(pl.LightningModule):
         style_feats_vgg = self.encode_with_vgg_intermediate(style)
         content_feats_vgg = self.encode_vgg_content(content)
 
-        loss_c = self.calc_content_loss(res_feats_vgg[-1], content_feats_vgg)
-        loss_s = self.calc_style_loss(res_feats_vgg[0], style_feats_vgg[0])
+        if self.hparams.loss_func == "cos":
+            calc_content_loss = self.calc_content_loss_cos
+            calc_style_loss   = self.calc_style_loss_cos
+        elif self.hparams.loss_func == "l1":
+            calc_content_loss = self.calc_content_loss_l1
+            calc_style_loss   = self.calc_style_loss_l1
+        else:
+            calc_content_loss = self.calc_content_loss
+            calc_style_loss   = self.calc_style_loss            
+
+        loss_c = calc_content_loss(res_feats_vgg[-1], content_feats_vgg)
+        loss_s = calc_style_loss(res_feats_vgg[0], style_feats_vgg[0])
         for i in range(1, 4):
-            loss_s = loss_s + self.calc_style_loss(res_feats_vgg[i], style_feats_vgg[i])
+            loss_s = loss_s + calc_style_loss(res_feats_vgg[i], style_feats_vgg[i])
 
         res_style_feats = self.style_encoder(res)
         res_filter_weights, res_filter_biases = self.modulator(res_style_feats)
@@ -395,20 +426,20 @@ class Net(pl.LightningModule):
 
             for j in range(int(style.size(0))):
                 if j==i:
-                    FeatMod_loss = self.calc_style_loss(res_style_feats[0][i].unsqueeze(0), style_feats[0][j].unsqueeze(0)) + \
-                                  self.calc_style_loss(res_style_feats[1][i].unsqueeze(0), style_feats[1][j].unsqueeze(0))
-                    FilterMod_loss = self.calc_content_loss(res_filter_weights[0][i], filter_weights[0][j]) + \
-                                    self.calc_content_loss(res_filter_weights[1][i], filter_weights[1][j]) + \
-                                    self.calc_content_loss(res_filter_biases[0][i], filter_biases[0][j]) + \
-                                    self.calc_content_loss(res_filter_biases[1][i], filter_biases[1][j])
+                    FeatMod_loss = calc_style_loss(res_style_feats[0][i].unsqueeze(0), style_feats[0][j].unsqueeze(0)) + \
+                                  calc_style_loss(res_style_feats[1][i].unsqueeze(0), style_feats[1][j].unsqueeze(0))
+                    FilterMod_loss = calc_content_loss(res_filter_weights[0][i], filter_weights[0][j]) + \
+                                    calc_content_loss(res_filter_weights[1][i], filter_weights[1][j]) + \
+                                    calc_content_loss(res_filter_biases[0][i], filter_biases[0][j]) + \
+                                    calc_content_loss(res_filter_biases[1][i], filter_biases[1][j])
                     pos_loss = FeatMod_loss + FilterMod_loss
                 else:
-                    FeatMod_loss = self.calc_style_loss(res_style_feats[0][i].unsqueeze(0), res_style_feats[0][j].unsqueeze(0)) + \
-                                  self.calc_style_loss(res_style_feats[1][i].unsqueeze(0), style_feats[1][j].unsqueeze(0))
-                    FilterMod_loss = self.calc_content_loss(res_filter_weights[0][i], filter_weights[0][j]) + \
-                                    self.calc_content_loss(res_filter_weights[1][i], filter_weights[1][j]) + \
-                                    self.calc_content_loss(res_filter_biases[0][i], filter_biases[0][j]) + \
-                                    self.calc_content_loss(res_filter_biases[1][i], filter_biases[1][j])
+                    FeatMod_loss = calc_style_loss(res_style_feats[0][i].unsqueeze(0), res_style_feats[0][j].unsqueeze(0)) + \
+                                  calc_style_loss(res_style_feats[1][i].unsqueeze(0), style_feats[1][j].unsqueeze(0))
+                    FilterMod_loss = calc_content_loss(res_filter_weights[0][i], filter_weights[0][j]) + \
+                                    calc_content_loss(res_filter_weights[1][i], filter_weights[1][j]) + \
+                                    calc_content_loss(res_filter_biases[0][i], filter_biases[0][j]) + \
+                                    calc_content_loss(res_filter_biases[1][i], filter_biases[1][j])
                     neg_loss = neg_loss + FeatMod_loss + FilterMod_loss
                     
         
