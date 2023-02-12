@@ -492,7 +492,7 @@ class LogPredictionsCallback(Callback):
         from torchvision.utils import save_image
         import wandb
         
-        if(trainer.global_step % 5000 == 0):
+        if(trainer.global_step % 2500 == 0):
           n = 10
           content, style = batch
 

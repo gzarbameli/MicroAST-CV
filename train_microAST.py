@@ -49,6 +49,7 @@ parser.add_argument('--log_steps', type=int, default=40)
 parser.add_argument('--save_model_interval', type=int, default=5000)
 parser.add_argument('--gpu_id', type=int, default=0)
 parser.add_argument('--resume', action='store_true', help='train the model from the checkpoint')
+parser.add_argument('--dec_tuned', action='store_true', help='use the modified decoder')
 parser.add_argument('--checkpoints', default='./checkpoints',
                     help='Directory to save the checkpoint')
 parser.add_argument('--ckpt_path', type=str, default='./checkpoints/last.ckpt', 
@@ -130,7 +131,7 @@ def main():
   if(args.resume):
     checkpoint_path = Path(args.ckpt_path)
   
-  wandb_logger = WandbLogger(project='microAST', name='microAST', log_model="all", save_dir=log_dir, save_code=False)
+  wandb_logger = WandbLogger(project='microAST', name='dec-tuned', log_model="all", save_dir=log_dir, save_code=False)
 
   wandb.login()
 
@@ -143,7 +144,10 @@ def main():
   content_encoder = net.Encoder()
   style_encoder = net.Encoder()
   modulator = net.Modulator()
-  decoder = net.Decoder()
+  if(args.dec_tuned):
+    decoder = net.DecoderTuned()
+  else:
+    decoder = net.Decoder()
 
   transform = train_transform()
 
