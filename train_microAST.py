@@ -165,7 +165,7 @@ def main():
   wandb_logger.watch(network)
 
   trainer = pl.Trainer(devices=1, limit_train_batches=args.max_iter, max_epochs=1, precision=16, accelerator="gpu", callbacks = \
-      [LogPredictionsCallback(), ModelCheckpoint(dirpath=checkpoints_dir, save_top_k=-1, every_n_train_steps=50, verbose=True), net.CustomModelCheckpoint(dirpath=checkpoints_dir,  every_n_train_steps=5000)], \
+      [LogPredictionsCallback(), ModelCheckpoint(dirpath=checkpoints_dir, save_top_k=-1, every_n_train_steps=5000, verbose=True), net.CustomModelCheckpoint(dirpath=checkpoints_dir,  every_n_train_steps=5000)], \
         logger=wandb_logger)
 
   # tune hyperparameters
