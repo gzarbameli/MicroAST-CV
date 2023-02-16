@@ -31,13 +31,22 @@ def upload_file():
         elif request.headers.get("predefinedStyle") == "Monet":
             shutil.copyfile('./predefined_styles/monet.jpg',os.path.join(app.config['UPLOAD_FOLDER'], "styleFile.jpg"))
         elif request.headers.get("predefinedStyle") == "Kandinskij":
-            shutil.copyfile('./predefined_styles/kandinskij.jpg',os.path.join(app.config['UPLOAD_FOLDER'], "styleFile.jpg"))
-        
+            shutil.copyfile('./predefined_styles/kandinskij.jpg',os.path.join(app.config['UPLOAD_FOLDER'], "styleFile.jpg")) 
             
+    model = request.headers.get("model")
+    print(model)
     contentFile = request.files['contentFile']
 
     contentFile.save(os.path.join(app.config['UPLOAD_FOLDER'], "contentFile.jpg"))
-    os.system('python test_microAST_cpu_only.py --content ./uploads/contentFile.jpg --style ./uploads/styleFile.jpg')
+    os.system('python test_microAST_cpu_only.py \
+                --content ./uploads/contentFile.jpg \
+                --style ./uploads/styleFile.jpg \
+                --content_encoder models/' + model + '/content_encoder_iter.pth \
+                --style_encoder models/' + model + '/style_encoder_iter.pth \
+                --modulator models/' + model + '/modulator_iter.pth \
+                --decoder models/' + model + '/decoder_iter.pth \
+                --model ' + model
+                )
     with open(os.path.join(app.config['OUTPUT_FOLDER'], "stylized_image.jpg"), "rb") as image_file:
         encoded_string = base64.b64encode(image_file.read()).decode("utf-8")
         return encoded_string
