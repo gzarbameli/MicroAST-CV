@@ -212,7 +212,6 @@ import {
                   onIonChange={(e) => onModelChange(e.detail.value)}
                 >
                   <IonSelectOption value="original">original</IonSelectOption>
-                  <IonSelectOption value="dec-tuned-style6-ssc6">dec-tuned-style6-ssc6</IonSelectOption>
                   <IonSelectOption value="dec-tuned-coco-wikiart">dec-tuned-coco-wikiart</IonSelectOption>
                   <IonSelectOption value="dec-tuned-finetuning-wikiart-faces-l2">dec-tuned-finetuning-wikiart-faces-l2</IonSelectOption>
                   <IonSelectOption value="dec-tuned-tv-coco-wikiart">dec-tuned-tv-coco-wikiart</IonSelectOption>
