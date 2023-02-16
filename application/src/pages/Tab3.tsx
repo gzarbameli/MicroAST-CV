@@ -1,4 +1,4 @@
-import { IonContent, IonHeader, IonPage, IonButton, IonToolbar, IonIcon, IonLabel, IonCard } from '@ionic/react';
+import { IonContent, IonHeader, IonPage, IonButton, IonToolbar, IonIcon, IonLabel, IonCard, IonCardTitle } from '@ionic/react';
 import { logoGithub } from 'ionicons/icons';
 import ExploreContainer from '../components/ExploreContainer';
 import './Tab3.css';
@@ -16,7 +16,8 @@ const Tab3: React.FC = () => {
       </IonHeader>
       
       <IonContent fullscreen>
-      <IonCard class="text-card">
+      <IonCard class="text-card" color="dark">
+      <IonCardTitle class="about">Original Model</IonCardTitle>
         <p className='about'>
         <strong>MicroAST</strong> is a lightweight model that completely abandons the use of cumbersome 
         pre-trained Deep Convolutional Neural Networks (e.g., VGG) at inference. 
@@ -32,10 +33,25 @@ const Tab3: React.FC = () => {
         first time enabling super-fast (about 0.5 seconds) arbitrary style transfer at 4K ultra-resolutions.
         </p>
         </IonCard>
-        <IonCard class="credits-card">
-          <IonLabel>
-            <h4 className="text">Credits: </h4>
-          </IonLabel>
+        <IonCard class="improvements-card" color="dark">
+        <IonCardTitle class="about">Our Works</IonCardTitle>
+        <dl>
+          <dt><strong> 1. Code Refactoring with new libraries:</strong></dt>
+          <dd>- PyTorch Lightning</dd>
+          <dd>- Torchmetrics</dd>
+          <dd>- Weights & Biases</dd>
+          <dt><strong>2. Performance improvements through different experiments:</strong></dt>
+          <dd>- Architecture</dd>
+          <dd>- Loss functions</dd>
+          <dt><strong>3. Fine tuning of the model for two different tasks:</strong></dt>
+          <dd>- Generic images</dd>
+          <dd>- Images with faces</dd>
+          <dt><strong>4. Application development for testing the different models</strong></dt>
+        </dl>
+
+        </IonCard>
+        <IonCard class="credits-card" color="dark">
+        <IonCardTitle class="about">Credits</IonCardTitle>
           <IonLabel>
             <h3 className="text">Antonio D'Orazio - 1967788</h3>
           </IonLabel>
@@ -49,6 +65,7 @@ const Tab3: React.FC = () => {
         <IonButton color="dark" expand="block" onClick={openGithub} style={{width: "320px", height:"7%"}}>
               <IonIcon icon={logoGithub} />      
         </IonButton>
+        <br></br>
       </IonContent>
     </IonPage>
   );

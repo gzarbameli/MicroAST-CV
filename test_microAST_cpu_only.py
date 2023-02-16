@@ -7,7 +7,7 @@ from PIL import Image
 from torchvision import transforms
 from torchvision.utils import save_image
 
-import net_microAST as net
+import net_microAST_cpu_only as net
 
 import traceback
 import thop
@@ -34,10 +34,12 @@ parser.add_argument('--style', type=str,
                     help='File path to the style image')
 parser.add_argument('--style_dir', type=str,
                     help='Directory path to a batch of style images')
-parser.add_argument('--content_encoder', type=str, default='models/content_encoder_iter_160000.pth.tar')
-parser.add_argument('--style_encoder', type=str, default='models/style_encoder_iter_160000.pth.tar')
-parser.add_argument('--modulator', type=str, default='models/modulator_iter_160000.pth.tar')
-parser.add_argument('--decoder', type=str, default='models/decoder_iter_160000.pth.tar')
+parser.add_argument('--content_encoder', type=str, default='models/content_encoder_iter.pth.tar')
+parser.add_argument('--style_encoder', type=str, default='models/style_encoder_iter.pth.tar')
+parser.add_argument('--modulator', type=str, default='models/modulator_iter.pth.tar')
+parser.add_argument('--decoder', type=str, default='models/decoder_iter.pth.tar')
+parser.add_argument('--model', type=str, default='original')
+
 
 # Additional options
 parser.add_argument('--content_size', type=int, default=0,
@@ -89,7 +91,8 @@ else:
 content_encoder = net.Encoder()
 style_encoder = net.Encoder()
 modulator = net.Modulator()
-decoder = net.Decoder()
+if ("dec-tuned" in args.model): decoder = net.DecoderTuned()
+else: decoder = net.Decoder()
 
 content_encoder.eval()
 style_encoder.eval()

@@ -14,30 +14,30 @@ const Tab2: React.FC = () => {
 
   const galleryImages = [
     {
-      url: 'http://localhost:5000/gallery/2.jpeg',
+      url: 'http://localhost:5000/gallery/5.jpeg',
       title: 'Kandinskij',
-      subtitle: 'Predefined Style',
+      subtitle: 'Original',
       style: 'http://localhost:5000/predefined_styles/kandinskij.jpg',
       content: 'http://localhost:5000/gallery/1.jpg'
     },
     {
       url: 'http://localhost:5000/gallery/3.jpeg',
       title: 'Picasso',
-      subtitle: 'Predefined Style',
+      subtitle: 'dec-tuned-style6-ssc6',
       style: 'http://localhost:5000/predefined_styles/picasso.jpg',
       content: 'http://localhost:5000/gallery/1.jpg'
     },
     {
-      url: 'http://localhost:5000/gallery/4.jpeg',
+      url: 'http://localhost:5000/gallery/2.jpeg',
       title: 'Classic',
-      subtitle: 'Custom Style',
+      subtitle: 'Original',
       style: 'http://localhost:5000/predefined_styles/classic.jpg',
       content: 'http://localhost:5000/gallery/1.jpg'
     },
     {
-      url: 'http://localhost:5000/gallery/5.jpeg',
+      url: 'http://localhost:5000/gallery/4.jpeg',
       title: 'Monet',
-      subtitle: 'Predefined Style',
+      subtitle: 'Original',
       style: 'http://localhost:5000/predefined_styles/monet.jpg',
       content: 'http://localhost:5000/gallery/1.jpg'
     }
@@ -93,7 +93,7 @@ const Tab2: React.FC = () => {
             backgroundColor: "rgba(0,0,0,0.5)"
       }}
         />
-      )}
+      )}  
 
       </IonContent>
       </IonPage>

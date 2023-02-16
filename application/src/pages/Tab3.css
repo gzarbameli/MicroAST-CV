@@ -10,7 +10,7 @@ h1.title {
   }
 
 p.about {
-    color: rgb(0, 0, 0);
+    color: rgb(255, 255, 255);
     font-family: 'Roboto Slab', serif;
     width: 90%;
     margin-left: 3%;
@@ -19,30 +19,46 @@ p.about {
 }
 
 h3.text {
-    color: rgb(0, 0, 0);
+    color: rgb(255, 255, 255);
     font-size: 120%;
     font-family: 'Roboto Slab', serif;
     text-align: left;
     margin-left: 3%;
+    margin-top: 10px;
+    font-weight: bold;
   }
 
-h4.text {
-  color: rgb(0, 0, 0);
-  font-size: 130%;
-  font-weight: bold;
+dl {
+  color: rgb(255, 255, 255);
+  font-size: 110%;
   font-family: 'Roboto Slab', serif;
   text-align: left;
   margin-left: 3%;
+  margin-top: 10px;
+}
+
+ion-card-title.about {
+  color: rgb(246, 248, 126);
+  font-family: 'Roboto Slab', serif;
+  font-size: 160%;
+  margin-left: 7px;
+  margin-top: 7px;
 }
 
 ion-card.text-card {
-    height: 500px;
+    height: 532px;
     border-top: 0px solid black;
     border-bottom: 0px solid black;
 }
 
+ion-card.improvements-card {
+  height: 350px;
+  border-top: 0px solid black;
+  border-bottom: 0px solid black;
+}
+
 ion-card.credits-card {
-    height: 95px;
+    height: 135px;
     border-top: 0px solid black;
     border-bottom: 0px solid black;
 }

@@ -46,11 +46,12 @@ import {
     const [styleName, setStyleName] = useState("");
     const [predefinedStyle, setPredefinedStyle] = useState("");
     const [showAlert, setShowAlert] = useState(false);
+    const [model, setModel] = useState("original");
 
     function DownloadButton() {
         return (
           <a href={`data:image/jpeg;base64,${finalImage}`} download>
-            <IonButton color="success" expand="block" style={{width: "80px", height:"43px", marginTop: '7%', margin: 'auto', display: 'block'}}>
+            <IonButton color="success" expand="block" style={{width: "80px", height:"40px", marginTop: '7%', margin: 'auto', display: 'block'}}>
               <IonIcon icon={download} />
             </IonButton>
           </a>
@@ -85,6 +86,10 @@ import {
       styleValue.current.file = false
       setStyleName(styleValue.current.file.name)
     };
+
+    const onModelChange = async (value: any) => {
+      setModel(await value)
+    };
   
     const submitForm = async () => {
       if (!styleValue.current.file && predefinedStyle=="") {
@@ -115,7 +120,7 @@ import {
         const response = await fetch(serverUrl, {
           method: "POST",
           body: formData,
-          headers: new Headers({"predefinedStyle":predefinedStyle})
+          headers: new Headers({"predefinedStyle":predefinedStyle, "model":model})
         });
   
         if (!response.ok) {
@@ -140,8 +145,9 @@ import {
             <h1 className="title">Arbitrary Style Transfer</h1>
           </IonToolbar>
         </IonHeader>
-        <IonContent fullscreen>
+        <IonContent fullscreen >
           <br></br>   
+
           <IonItem className="ion-text-center" lines="full">
             <IonLabel>
               <h1 className="text">Select your style image </h1>
@@ -184,6 +190,7 @@ import {
             </IonLabel>
           </IonItem>
 
+          
           <input
             type="file"
             id="content-file-upload"
@@ -197,7 +204,27 @@ import {
               )}
           </IonButton>
 
-          <br></br>
+          <IonList>
+            <IonItem lines="full">
+              <IonSelect
+                  id="my-select-model"
+                  placeholder="Model"
+                  onIonChange={(e) => onModelChange(e.detail.value)}
+                >
+                  <IonSelectOption value="original">original</IonSelectOption>
+                  <IonSelectOption value="dec-tuned-style6-ssc6">dec-tuned-style6-ssc6</IonSelectOption>
+                  <IonSelectOption value="dec-tuned-coco-wikiart">dec-tuned-coco-wikiart</IonSelectOption>
+                  <IonSelectOption value="dec-tuned-finetuning-wikiart-faces-l2">dec-tuned-finetuning-wikiart-faces-l2</IonSelectOption>
+                  <IonSelectOption value="dec-tuned-tv-coco-wikiart">dec-tuned-tv-coco-wikiart</IonSelectOption>
+                  <IonSelectOption value="dec-tuned-tv-ffhq-laion-scratch">dec-tuned-tv-ffhq-laion-scratch</IonSelectOption>
+                  <IonSelectOption value="dec-tuned-tv-finetuning-ffhq-laion-l2">dec-tuned-tv-finetuning-ffhq-laion-l2</IonSelectOption>
+                  <IonSelectOption value="dec-tuned-tv-ffhq-wikiart-faces-scratch">dec-tuned-tv-ffhq-wikiart-faces-scratch</IonSelectOption>
+                  <IonSelectOption value="dec-tuned-tvfinetuning-ffhq-wikiart-l1">dec-tuned-tvfinetuning-ffhq-wikiart-l1</IonSelectOption>
+                  
+              </IonSelect>
+            </IonItem>
+          </IonList>
+
           <IonButton className="transfer-button" color="secondary" expand="block" onClick={submitForm}>
             <IonIcon icon={brushOutline} slot={"icon-only"}/>
           </IonButton>
@@ -229,19 +256,20 @@ import {
                 }}>
                 <img src={placeholder} alt="Your image" 
                 style={{width: '100%', height: '100%', margin: 'auto'}}/>
+                
                 </div>
+                
             ) : (
                 <div style={{
                   width: '320px',
-                    height: '230px',
+                    height: '260px',
                     marginLeft: 'auto',
                     marginRight: 'auto',
                     position: "relative",
-                    border: '1px solid black',
                     padding: '2px'
                 }}>
                 <img src={`data:image/jpeg;base64,${finalImage}`} alt="Your image" 
-                style={{width: '100%', height: '100%', margin: 'auto'}}/>
+                style={{width: '100%', height: '80%', margin: 'auto', border: '1px solid black'}}/>
                 <DownloadButton />
                 </div>
             )}
