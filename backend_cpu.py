@@ -47,6 +47,7 @@ def upload_file():
                 --decoder models/' + model + '/decoder_iter.pth \
                 --model ' + model
                 )
+    
     with open(os.path.join(app.config['OUTPUT_FOLDER'], "stylized_image.jpg"), "rb") as image_file:
         encoded_string = base64.b64encode(image_file.read()).decode("utf-8")
         return encoded_string

@@ -220,7 +220,8 @@ import {
                   <IonSelectOption value="dec-tuned-tv-finetuning-ffhq-laion-l2">dec-tuned-tv-finetuning-ffhq-laion-l2</IonSelectOption>
                   <IonSelectOption value="dec-tuned-tv-ffhq-wikiart-faces-scratch">dec-tuned-tv-ffhq-wikiart-faces-scratch</IonSelectOption>
                   <IonSelectOption value="dec-tuned-tvfinetuning-ffhq-wikiart-l1">dec-tuned-tvfinetuning-ffhq-wikiart-l1</IonSelectOption>
-                  
+                  <IonSelectOption value="dec-tuned-tv-coco-wikiart-portraits">dec-tuned-tv-coco-wikiart-portraits</IonSelectOption>
+                  <IonSelectOption value="dec-tuned-tv-l1-content075-style-9">dec-tuned-tv-l1-content075-style-9</IonSelectOption>
               </IonSelect>
             </IonItem>
           </IonList>
