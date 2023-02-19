@@ -1,3 +1,14 @@
+# Our Contribution
+We made a small project for the Computer Vision course of CS @ Sapienza University of Rome. 
+We started from the original code and made a few improvements:
+- Transitioned to PyTorch Lighting for added features like Automatic Mixed Precision and Logging (on WandB)
+- Added support for Datasets with png files, like LAION and FFHQ
+- Different loss metrics from torchmetrics, like L1 and Total Variation for regularization
+- Bicubic upsampling with a bigger kernel in the last convolutional layer of the decoder for better output image quality
+- Ionic App client and Flask server for model testing
+
+More details can be found in the project presentation.
+
 # MicroAST（AAAI 2023 Oral）
 **[update 12/31/2022]**
 
