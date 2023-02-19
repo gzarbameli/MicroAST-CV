@@ -7,7 +7,7 @@ We started from the original code and made a few improvements:
 - Bicubic upsampling with a bigger kernel in the last convolutional layer of the decoder for better output image quality
 - Ionic App client and Flask server for model testing
 
-More details can be found in the project presentation.
+More details can be found in the [project presentation](https://github.com/gzarbameli/MicroAST-CV/blob/main/project-report.pdf).
 
 # MicroAST（AAAI 2023 Oral）
 **[update 12/31/2022]**
